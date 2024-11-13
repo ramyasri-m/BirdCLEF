@@ -1,6 +1,17 @@
 # Import required libraries
 import librosa
 import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler
+from joblib import Parallel, delayed
+from collections import Counter
+import re
+import scipy.signal as signal
+import os
+from tqdm import tqdm
+import gc  # Garbage collector
+
+class FeatureExtractor:
 
 # Load an audio file (replace 'audio_file.wav' with the path to your audio file)
 audio_path = '/kaggle/input/birdclef-2022/train_audio/afrsil1/XC125458.ogg'
@@ -79,8 +90,6 @@ for feature_name, feature_value in features.items():
 # Display only the first set of coefficients for inspection, e.g., MFCC
 print("\nSample MFCC Coefficients:\n", mfcc[:, :5])  # Print the first 5 columns of MFCCs
 
-import pandas as pd
-
 # Load the metadata and taxonomy data
 metadata_path = '/kaggle/input/birdclef-2022/train_metadata.csv'
 taxonomy_path = '/kaggle/input/birdclef-2022/eBird_Taxonomy_v2021.csv'
@@ -102,12 +111,6 @@ else:
     print(f"Primary labels not in taxonomy: {metadata_labels - taxonomy_codes}")
     #print(f"Taxonomy codes not in metadata: {taxonomy_codes - metadata_labels}")
 
-import pandas as pd
-import librosa
-import numpy as np
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from joblib import Parallel, delayed
-
 # Load the metadata
 # Load the metadata and taxonomy files
 metadata_path = '/kaggle/input/birdclef-2022/train_metadata.csv'
@@ -123,9 +126,6 @@ filtered_metadata_df = metadata_df[metadata_df['rating'] >= 3]
 # Display the total number of filtered samples
 filtered_samples = len(filtered_metadata_df)
 print(f"Total number of samples with rating >= 3: {filtered_samples}")
-
-from collections import Counter
-import re
 
 # List of columns to analyze
 columns_to_analyze = ['secondary_labels', 'type']
@@ -265,14 +265,6 @@ def analyze_column(df, column_name):
 for column in columns_to_analyze:
     analyze_column(merged_df, column)
 
-import librosa
-import scipy.signal as signal
-import numpy as np
-import os
-import pandas as pd
-from tqdm import tqdm
-import gc  # Garbage collector
-
 # Define the base path for audio files
 base_path = '/kaggle/input/birdclef-2022/train_audio/'
 
@@ -392,10 +384,6 @@ print("DataFrame after feature extraction:")
 print(extra_data.head())
 print(final_data.head())
 
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-
 # Load the dataset
 file_path = '/kaggle/input/birdclef/extra_data.csv'
 df = pd.read_csv(file_path)
@@ -426,149 +414,6 @@ df = df.drop(columns=['type', 'scientific_name', 'common_name', 'filename', 'TAX
 
 # Save the final preprocessed DataFrame
 preprocessed_file_path = '/kaggle/working/extra_preprocessed_data.csv'
-df.to_csv(preprocessed_file_path, index=False)
-
-# Display a sample of the DataFrame
-print("Sample of the preprocessed DataFrame:")
-print(df.head())
-
-print(f"\nPreprocessed data saved to {preprocessed_file_path}")
-
-import librosa
-import scipy.signal as signal
-import numpy as np
-import os
-import pandas as pd
-from tqdm import tqdm
-import gc  # Garbage collector
-
-# Define the base path for audio files
-base_path = '/kaggle/input/birdclef-2022/train_audio/'
-
-# Bandpass filter function for typical birdsong frequencies (1-10 kHz)
-def bandpass_filter(y, sr, lowcut=1000, highcut=10000):
-    sos = signal.butter(10, [lowcut, highcut], btype='band', fs=sr, output='sos')
-    filtered = signal.sosfilt(sos, y)
-    return filtered
-
-# Function to extract audio features
-def extract_features(y, sr):
-    features = {}
-    
-    # Apply bandpass filter
-    y = bandpass_filter(y, sr)
-    
-    # MFCC - Mean values across 13 coefficients
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=1024)
-    for i in range(13):
-        features[f'mfcc_mean_{i+1}'] = np.mean(mfcc[i])
-
-    # Chroma - Mean values across 12 chroma features
-    chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=1024)
-    for i in range(12):
-        features[f'chroma_mean_{i+1}'] = np.mean(chroma[i])
-    
-    # Spectral Contrast - Mean values across 6 or 7 bands
-    spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, n_fft=1024)
-    for i in range(spectral_contrast.shape[0]):
-        features[f'spectral_contrast_mean_{i+1}'] = np.mean(spectral_contrast[i])
-
-    # Spectral Centroid - Mean
-    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr, n_fft=1024)
-    features['spectral_centroid_mean'] = np.mean(spectral_centroid)
-    
-    # Spectral Bandwidth - Mean
-    spectral_bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr, n_fft=1024)
-    features['spectral_bandwidth_mean'] = np.mean(spectral_bandwidth)
-    
-    # Zero-Crossing Rate - Mean
-    zcr = librosa.feature.zero_crossing_rate(y, frame_length=1024)
-    features['zcr_mean'] = np.mean(zcr)
-    
-    return features
-
-# Function to process data in batches
-def process_in_batches(df, batch_size=100):
-    all_features = []
-    num_batches = len(df) // batch_size + (1 if len(df) % batch_size != 0 else 0)
-    
-    for batch_num in tqdm(range(num_batches), desc="Processing Batches"):
-        batch_df = df.iloc[batch_num * batch_size : (batch_num + 1) * batch_size]
-        
-        batch_features = []
-        for filename in batch_df['filename']:
-            file_path = os.path.join(base_path, filename)
-            
-            y, sr = librosa.load(file_path, sr=44100)  # Set sample rate to 44100 Hz
-            features = extract_features(y, sr)
-            batch_features.append(features)
-        
-        # Convert batch features to DataFrame
-        features_df = pd.DataFrame(batch_features)
-        
-        # Concatenate features with the original batch DataFrame
-        batch_combined = pd.concat([batch_df.reset_index(drop=True), features_df], axis=1)
-        all_features.append(batch_combined)
-        
-        # Clear memory
-        del batch_features, y
-        gc.collect()
-    
-    # Concatenate all batches to form the final DataFrame
-    final_data = pd.concat(all_features, ignore_index=True)
-    return final_data
-
-# Apply batch processing to the DataFrame
-final_data = process_in_batches(merged_df, batch_size=100)
-
-# Save the final DataFrame to a CSV file
-final_data.to_csv("final_data.csv", index=False)
-
-# Display DataFrames after feature extraction
-print("DataFrame after feature extraction:")
-print(final_data.head())
-
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-
-# Load the dataset
-file_path = '/kaggle/input/birdclef/final_data.csv'
-df = pd.read_csv(file_path)
-
-# Convert latitude and longitude to radians
-df['latitude_rad'] = np.radians(df['latitude'])
-df['longitude_rad'] = np.radians(df['longitude'])
-
-# Transform to polar coordinates
-df['x'] = np.cos(df['latitude_rad']) * np.cos(df['longitude_rad'])
-df['y'] = np.cos(df['latitude_rad']) * np.sin(df['longitude_rad'])
-df['z'] = np.sin(df['latitude_rad'])
-
-# Drop the original latitude and longitude columns
-df = df.drop(columns=['latitude', 'longitude', 'latitude_rad', 'longitude_rad'])
-
-# List of audio feature columns provided
-audio_feature_columns = [
-    'mfcc_mean_1', 'mfcc_mean_2', 'mfcc_mean_3', 'mfcc_mean_4', 'mfcc_mean_5', 
-    'mfcc_mean_6', 'mfcc_mean_7', 'mfcc_mean_8', 'mfcc_mean_9', 'mfcc_mean_10', 
-    'mfcc_mean_11', 'mfcc_mean_12', 'mfcc_mean_13', 'chroma_mean_1', 'chroma_mean_2', 
-    'chroma_mean_3', 'chroma_mean_4', 'chroma_mean_5', 'chroma_mean_6', 'chroma_mean_7', 
-    'chroma_mean_8', 'chroma_mean_9', 'chroma_mean_10', 'chroma_mean_11', 'chroma_mean_12', 
-    'spectral_contrast_mean_1', 'spectral_contrast_mean_2', 'spectral_contrast_mean_3', 
-    'spectral_contrast_mean_4', 'spectral_contrast_mean_5', 'spectral_contrast_mean_6', 
-    'spectral_contrast_mean_7', 'spectral_centroid_mean', 'spectral_bandwidth_mean', 'zcr_mean'
-]
-
-# Normalize the audio feature columns to the range [0, 1]
-audio_scaler = MinMaxScaler()
-df[audio_feature_columns] = audio_scaler.fit_transform(df[audio_feature_columns])
-
-# Drop Unecessary columns
-df = df.drop(columns=['type', 'scientific_name', 'common_name', 'filename', 'TAXON_ORDER', 'CATEGORY', 'SPECIES_CODE', 'ORDER1', 'FAMILY'])
-
-# Save the final preprocessed DataFrame
-preprocessed_file_path = '/kaggle/working/preprocessed_data.csv'
 df.to_csv(preprocessed_file_path, index=False)
 
 # Display a sample of the DataFrame
