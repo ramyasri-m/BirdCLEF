@@ -23,7 +23,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def extract_features(filepath):
-    feature_extractor = FeatureExtractor('')
+    feature_extractor = FeatureExtractor()
     return feature_extractor.extract_features(filepath)
 
 # Load model and set it to evaluation mode
