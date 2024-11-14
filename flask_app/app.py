@@ -65,7 +65,7 @@ def classify_and_show_results():
 
     # Process predictions and render results
     predictions_probability, prediction_classes = process_predictions(predictions,
-                                                                      '')
+                                                                      'config_files/classes.json')
 
     predictions_to_render = {prediction_classes[i]: "{}%".format(
                                 round(predictions_probability[i] * 100, 3)) for i in range(3)}
