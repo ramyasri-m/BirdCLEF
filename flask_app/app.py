@@ -1,15 +1,18 @@
 import os
 import sys
 import numpy as np
-import torch
 
+
+from keras.models import load_model
 from werkzeug.utils import secure_filename
 from utils.utils import process_predictions
 from feature_extraction.feature_extractor import FeatureExtractor
 from flask import Flask, flash, request, redirect, url_for, send_from_directory, render_template
 
+
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'ogg'}
+
 
 # Create Flask App
 app = Flask(__name__)
@@ -18,17 +21,16 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def extract_features(filepath):
     feature_extractor = FeatureExtractor()
     return feature_extractor.extract_features(filepath)
 
-# Load model and set it to evaluation mode
-model = torch.load('models/model.pth')
-model.eval()
 
 # Upload files function
 @app.route('/', methods=['GET', 'POST'])
@@ -51,30 +53,30 @@ def upload_file():
                 filename=filename))
     return render_template("index.html")
 
+
 # Classify and show results
 @app.route('/results', methods=['GET'])
 def classify_and_show_results():
     filename = request.args['filename']
     # Compute audio signal features
     features = extract_features(filename)
-    features = torch.tensor(features).unsqueeze(0).float()  # Convert to tensor and add batch dimension
-
-    # Perform inference
-    with torch.no_grad():
-        predictions = model(features).squeeze(0).numpy()  # Remove batch dimension
-
+    features = np.expand_dims(features, 0)
+    # Load model and perform inference
+    model = load_model('models/model_1.hdf5')
+    predictions = model.predict(features)[0]
     # Process predictions and render results
     predictions_probability, prediction_classes = process_predictions(predictions,
-                                                                      'config_files/classes.json')
+                                                                    'config_files/classes.json')
 
-    predictions_to_render = {prediction_classes[i]: "{}%".format(
-                                round(predictions_probability[i] * 100, 3)) for i in range(3)}
+    predictions_to_render = {prediction_classes[i]:"{}%".format(
+                                round(predictions_probability[i]*100, 3)) for i in range(3)}
     # Delete uploaded file
     os.remove(filename)
     # Render results
     return render_template("results.html",
         filename=filename,
         predictions_to_render=predictions_to_render)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
