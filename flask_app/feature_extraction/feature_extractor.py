@@ -23,6 +23,18 @@ class FeatureExtractor:
     
     # Filter the DataFrame to include only samples with rating >= 3
     filtered_metadata_df = metadata_df[metadata_df['rating'] >= 3]
+
+    def analyze_column_individual_case_insensitive(df, column_name):
+        # Initialize a Counter to count each unique item across all entries
+        item_counter = Counter()
+        
+        # Iterate over each entry in the column
+        for entry in df[column_name].dropna():
+            # Convert the string to a list, make each item lowercase, and remove spaces
+            items = [re.sub(r'\s+', '', item.lower()) for item in eval(entry)]  # Lowercase and remove spaces
+            # Update the counter with items in the list
+            item_counter.update(items)
+        return item_counter
         
     # Analyze the 'type' column
     type_counts = analyze_column_individual_case_insensitive(filtered_metadata_df, 'type')
