@@ -14,9 +14,9 @@ import gc  # Garbage collector
 class FeatureExtractor:
     
     # Load the metadata and taxonomy files
-    metadata_path = 'C:\Users\nivet\Documents\birdclef-2022\train_metadata.csv'
-    taxonomy_path = 'C:\Users\nivet\Documents\birdclef-2022\eBird_Taxonomy_v2021.csv'
-    audio_base_path = 'C:\Users\nivet\Documents\birdclef-2022\train_audio'
+    metadata_path = 'C:/Users/nivet/Documents/birdclef-2022/train_metadata.csv'
+    taxonomy_path = 'C:/Users/nivet/Documents/birdclef-2022/eBird_Taxonomy_v2021.csv'
+    audio_base_path = 'C:/Users/nivet/Documents/birdclef-2022/train_audio'
     
     metadata_df = pd.read_csv(metadata_path)
     taxonomy_df = pd.read_csv(taxonomy_path)
@@ -65,10 +65,10 @@ class FeatureExtractor:
     #merged_df['Scientific_name'] = label_encoder.fit_transform(merged_df['SCI_NAME'])
     
     # Save the final DataFrame to a CSV file
-    merged_df.to_csv("merged_data.csv", index=False)
+    merged_df.to_csv("C:/Users/nivet/Documents/birdclef-2022/merged_data.csv", index=False)
     
     # Define the base path for audio files
-    base_path = 'C:\Users\nivet\Documents\birdclef-2022\train_audio'
+    base_path = 'C:/Users/nivet/Documents/birdclef-2022/train_audio'
     
     delta_width = 3
     # Bandpass filter function for typical birdsong frequencies (1-10 kHz)
@@ -179,10 +179,10 @@ class FeatureExtractor:
     extra_data = process_in_batches(merged_df, batch_size=100)
     
     # Save the final DataFrame to a CSV file
-    extra_data.to_csv("C:\Users\nivet\Documents\birdclef-2022\extra_data.csv", index=False)
+    extra_data.to_csv("C:/Users/nivet/Documents/birdclef-2022/extra_data.csv", index=False)
     
     # Load the dataset
-    file_path = 'C:\Users\nivet\Documents\birdclef-2022\extra_data.csv'
+    file_path = 'C:/Users/nivet/Documents/birdclef-2022/extra_data.csv'
     df = pd.read_csv(file_path)
     
     # Convert latitude and longitude to radians
@@ -210,5 +210,5 @@ class FeatureExtractor:
     df = df.drop(columns=['type', 'scientific_name', 'common_name', 'filename', 'TAXON_ORDER', 'CATEGORY', 'SPECIES_CODE', 'ORDER1', 'FAMILY'])
     
     # Save the final preprocessed DataFrame
-    preprocessed_file_path = 'C:\Users\nivet\Documents\birdclef-2022\extra_preprocessed_data.csv'
+    preprocessed_file_path = 'C:/Users/nivet/Documents/birdclef-2022/extra_preprocessed_data.csv'
     df.to_csv(preprocessed_file_path, index=False)
