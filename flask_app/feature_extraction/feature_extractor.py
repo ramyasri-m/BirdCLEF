@@ -20,6 +20,9 @@ class FeatureExtractor:
     
     metadata_df = pd.read_csv(metadata_path)
     taxonomy_df = pd.read_csv(taxonomy_path)
+
+    # Define noisy types to consider
+    noisy_terms = ['wing', 'wings', 'water', 'splash', 'rain', 'ground', 'background', 'noise', 'anthropogenic', 'traffic', 'street']
     
     # Filter the DataFrame to include only samples with rating >= 3
     filtered_metadata_df = metadata_df[metadata_df['rating'] >= 3]
@@ -38,9 +41,6 @@ class FeatureExtractor:
         
     # Analyze the 'type' column
     type_counts = analyze_column_individual_case_insensitive(filtered_metadata_df, 'type')
-    
-    # Define noisy types to consider
-    noisy_terms = ['wing', 'wings', 'water', 'splash', 'rain', 'ground', 'background', 'noise', 'anthropogenic', 'traffic', 'street']
     
     # Filter types that contain any of the noisy terms
     noisy_types = [item for item in type_counts if any(term in item for term in noisy_terms)]
