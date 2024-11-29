@@ -12,145 +12,18 @@ from tqdm import tqdm
 import gc  # Garbage collector
 
 class FeatureExtractor:
-
-    # Load an audio file (replace 'audio_file.wav' with the path to your audio file)
-    audio_path = '/kaggle/input/birdclef-2022/train_audio/afrsil1/XC125458.ogg'
-    y, sr = librosa.load(audio_path)
     
-    # Create a dictionary to store the extracted features
-    features = {}
-    
-    # 1. Extract MFCC (Mel-Frequency Cepstral Coefficients)
-    # MFCCs are used to capture the timbral texture of an audio signal.
-    # 'n_mfcc' is the number of MFCC features to extract; 13 is commonly used.
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    features['MFCCs'] = mfcc
-    print("MFCCs Shape:", mfcc.shape)
-    
-    # 2. Chroma Feature
-    # Chroma features are used to capture pitch class (similar to musical notes).
-    # They help recognize harmonic structures in audio.
-    chroma_stft = librosa.feature.chroma_stft(y=y, sr=sr)
-    features['Chroma'] = chroma_stft
-    print("Chroma Shape:", chroma_stft.shape)
-    
-    # 3. Spectral Centroid
-    # This measures the "brightness" of a sound by calculating the center of mass of the spectrum.
-    # Higher values indicate a "brighter" sound.
-    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
-    features['Spectral Centroid'] = spectral_centroid
-    print("Spectral Centroid Shape:", spectral_centroid.shape)
-    
-    # 4. Spectral Bandwidth
-    # Spectral Bandwidth measures the range of frequencies in the sound.
-    # Higher values indicate a sound with a wider frequency range.
-    spectral_bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-    features['Spectral Bandwidth'] = spectral_bandwidth
-    print("Spectral Bandwidth Shape:", spectral_bandwidth.shape)
-    
-    # 5. Spectral Contrast
-    # This measures the difference in amplitude between peaks and valleys in the spectrum.
-    # It can help distinguish between sounds with different timbres.
-    spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr)
-    features['Spectral Contrast'] = spectral_contrast
-    print("Spectral Contrast Shape:", spectral_contrast.shape)
-    
-    # 6. Zero Crossing Rate (ZCR)
-    # ZCR calculates how often the audio signal crosses the zero amplitude level.
-    # Noisy sounds have high ZCR, while smoother sounds have low ZCR.
-    zcr = librosa.feature.zero_crossing_rate(y)
-    features['Zero Crossing Rate'] = zcr
-    print("Zero Crossing Rate Shape:", zcr.shape)
-    
-    # 7. Root Mean Square Energy (RMSE)
-    # RMSE measures the power (or loudness) of the signal, indicating sound intensity over time.
-    rmse = librosa.feature.rms(y=y)
-    features['RMSE'] = rmse
-    print("RMSE Shape:", rmse.shape)
-    
-    # 8. Mel Spectrogram
-    # A Mel spectrogram represents the energy of different frequency bands over time on the Mel scale.
-    # This is used in many audio tasks as it captures frequency and time-based patterns.
-    mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
-    features['Mel Spectrogram'] = mel_spectrogram
-    print("Mel Spectrogram Shape:", mel_spectrogram.shape)
-    
-    # 9. Harmonic-to-Noise Ratio (HNR)
-    # HNR measures the ratio of harmonic content to noise content in the audio signal.
-    # It's useful for distinguishing between tonal and non-tonal sounds.
-    harmonic, percussive = librosa.effects.hpss(y)  # Separates harmonic and percussive elements
-    hnr = librosa.effects.harmonic(y) / librosa.effects.percussive(y)
-    features['Harmonic-to-Noise Ratio'] = hnr
-    print("Harmonic-to-Noise Ratio Shape:", hnr.shape)
-    
-    # Print a summary of all extracted features
-    for feature_name, feature_value in features.items():
-        print(f"{feature_name} extracted with shape: {feature_value.shape}")
-    
-    # Display only the first set of coefficients for inspection, e.g., MFCC
-    print("\nSample MFCC Coefficients:\n", mfcc[:, :5])  # Print the first 5 columns of MFCCs
-    
-    # Load the metadata and taxonomy data
-    metadata_path = '/kaggle/input/birdclef-2022/train_metadata.csv'
-    taxonomy_path = '/kaggle/input/birdclef-2022/eBird_Taxonomy_v2021.csv'
-    
-    # Read the CSV files into DataFrames
-    metadata_df = pd.read_csv(metadata_path)
-    taxonomy_df = pd.read_csv(taxonomy_path)
-    
-    # Check if all values in primary_label are in SPECIES_CODE
-    metadata_labels = set(metadata_df['primary_label'].unique())
-    taxonomy_codes = set(taxonomy_df['SPECIES_CODE'].unique())
-    
-    # Check if both sets are equal
-    if metadata_labels == taxonomy_codes:
-        print("All values in 'primary_label' match with 'SPECIES_CODE'.")
-    else:
-        print("Values in 'primary_label' do not match with 'SPECIES_CODE'.")
-        print("Mismatch found:")
-        print(f"Primary labels not in taxonomy: {metadata_labels - taxonomy_codes}")
-        #print(f"Taxonomy codes not in metadata: {taxonomy_codes - metadata_labels}")
-    
-    # Load the metadata
     # Load the metadata and taxonomy files
-    metadata_path = '/kaggle/input/birdclef-2022/train_metadata.csv'
-    taxonomy_path = '/kaggle/input/birdclef-2022/eBird_Taxonomy_v2021.csv'
-    audio_base_path = '/kaggle/input/birdclef-2022/train_audio/'
+    metadata_path = 'C:\Users\nivet\Documents\birdclef-2022\train_metadata.csv'
+    taxonomy_path = 'C:\Users\nivet\Documents\birdclef-2022\eBird_Taxonomy_v2021.csv'
+    audio_base_path = 'C:\Users\nivet\Documents\birdclef-2022\train_audio'
     
     metadata_df = pd.read_csv(metadata_path)
     taxonomy_df = pd.read_csv(taxonomy_path)
     
     # Filter the DataFrame to include only samples with rating >= 3
     filtered_metadata_df = metadata_df[metadata_df['rating'] >= 3]
-    
-    # Display the total number of filtered samples
-    filtered_samples = len(filtered_metadata_df)
-    print(f"Total number of samples with rating >= 3: {filtered_samples}")
-    
-    # List of columns to analyze
-    columns_to_analyze = ['secondary_labels', 'type']
-    
-    # Function to analyze each column with individual string components, case-insensitive and space-insensitive
-    def analyze_column_individual_case_insensitive(df, column_name):
-        print(f"\nAnalyzing individual values within the column (case-insensitive and space-insensitive): {column_name}")
         
-        # Initialize a Counter to count each unique item across all entries
-        item_counter = Counter()
-        
-        # Iterate over each entry in the column
-        for entry in df[column_name].dropna():
-            # Convert the string to a list, make each item lowercase, and remove spaces
-            items = [re.sub(r'\s+', '', item.lower()) for item in eval(entry)]  # Lowercase and remove spaces
-            # Update the counter with items in the list
-            item_counter.update(items)
-        
-        # Print total unique items and counts for each
-        #unique_items = len(item_counter)
-        #print(f"Total number of unique items: {unique_items}")
-        #print(f"\nCount of occurrences for each unique item (case-insensitive and space-insensitive):\n{item_counter}")
-        
-        return item_counter
-    
     # Analyze the 'type' column
     type_counts = analyze_column_individual_case_insensitive(filtered_metadata_df, 'type')
     
@@ -159,9 +32,6 @@ class FeatureExtractor:
     
     # Filter types that contain any of the noisy terms
     noisy_types = [item for item in type_counts if any(term in item for term in noisy_terms)]
-    
-    print("\nTypes identified as containing noise (including specified terms):")
-    print(noisy_types)
     
     # Function to filter DataFrame by removing rows where all 'type' values match noisy types
     def filter_noisy_rows(df, noisy_types):
@@ -179,49 +49,11 @@ class FeatureExtractor:
     # Apply the filter to remove rows with only noisy types
     filtered_metadata_df_cleaned = filter_noisy_rows(filtered_metadata_df, noisy_types)
     
-    # Display the total number of filtered samples
-    filtered_samples = len(filtered_metadata_df_cleaned)
-    print(f"\nTotal number of samples without noisy types: {filtered_samples}")
-    
-    # Analyze the 'type' column again for unique items after filtering
-    #unique_items_after_filtering = analyze_column_individual_case_insensitive(filtered_metadata_df_cleaned, 'type')
-    
-    # Display the filtered DataFrame without noisy types
-    #print("\nFiltered DataFrame without noisy types:")
-    #print(filtered_metadata_df_cleaned)
-    
     # Merge with taxonomy on scientific name
     merged_df = pd.merge(filtered_metadata_df_cleaned, taxonomy_df, left_on='scientific_name', right_on='SCI_NAME', how='left')
     
     # Drop specified columns after merging
     merged_df = merged_df.drop(columns=['primary_label', 'PRIMARY_COM_NAME', 'secondary_labels', 'author', 'license', 'rating', 'REPORT_AS', 'SCI_NAME', 'time', 'url', 'SPECIES_GROUP'])
-    
-    # Display DataFrames after filtering and merging.
-    print("DataFrame after filtering and merging:")
-    print(merged_df.head())
-    
-    # List of columns to analyze
-    columns_to_analyze = ['CATEGORY', 'ORDER1', 'FAMILY', 'SPECIES_CODE', 'common_name', 'scientific_name', 'TAXON_ORDER']
-    
-    # Function to analyze each column
-    def analyze_column(df, column_name):
-        print(f"\nColumn: {column_name}")
-        
-        # Total number of unique values
-        unique_values = df[column_name].nunique()
-        print(f"Total number of unique values: {unique_values}")
-        
-        # Number of missing values
-        missing_values = df[column_name].isnull().sum()
-        print(f"Number of missing values: {missing_values}")
-        
-        # Count of occurrences for each unique value
-        value_counts = df[column_name].value_counts()
-        print(f"\nCount of occurrences for each unique value:\n{value_counts}")
-    
-    # Analyze each column in the list
-    for column in columns_to_analyze:
-        analyze_column(merged_df, column)
     
     # Encode hierarchical taxonomy levels (e.g., Order, Family)
     label_encoder = LabelEncoder()
@@ -234,39 +66,9 @@ class FeatureExtractor:
     
     # Save the final DataFrame to a CSV file
     merged_df.to_csv("merged_data.csv", index=False)
-        
-    # Randomly sample 1,000 entries from the filtered DataFrame
-    sampled_merged_df = merged_df.sample(n=1000, random_state=42)
-    
-    # Display DataFrames after encoding.
-    print("DataFrame after encoding:")
-    print(merged_df.head())
-    
-    # List of columns to analyze
-    columns_to_analyze = ['Order', 'Family']
-    
-    # Function to analyze each column
-    def analyze_column(df, column_name):
-        print(f"\nColumn: {column_name}")
-        
-        # Total number of unique values
-        unique_values = df[column_name].nunique()
-        print(f"Total number of unique values: {unique_values}")
-        
-        # Number of missing values
-        missing_values = df[column_name].isnull().sum()
-        print(f"Number of missing values: {missing_values}")
-        
-        # Count of occurrences for each unique value
-        value_counts = df[column_name].value_counts()
-        print(f"\nCount of occurrences for each unique value:\n{value_counts}")
-    
-    # Analyze each column in the list
-    for column in columns_to_analyze:
-        analyze_column(merged_df, column)
     
     # Define the base path for audio files
-    base_path = '/kaggle/input/birdclef-2022/train_audio/'
+    base_path = 'C:\Users\nivet\Documents\birdclef-2022\train_audio'
     
     delta_width = 3
     # Bandpass filter function for typical birdsong frequencies (1-10 kHz)
@@ -377,15 +179,10 @@ class FeatureExtractor:
     extra_data = process_in_batches(merged_df, batch_size=100)
     
     # Save the final DataFrame to a CSV file
-    extra_data.to_csv("extra_data.csv", index=False)
-    
-    # Display DataFrames after feature extraction
-    print("DataFrame after feature extraction:")
-    print(extra_data.head())
-    print(final_data.head())
+    extra_data.to_csv("C:\Users\nivet\Documents\birdclef-2022\extra_data.csv", index=False)
     
     # Load the dataset
-    file_path = '/kaggle/input/birdclef/extra_data.csv'
+    file_path = 'C:\Users\nivet\Documents\birdclef-2022\extra_data.csv'
     df = pd.read_csv(file_path)
     
     # Convert latitude and longitude to radians
@@ -413,11 +210,5 @@ class FeatureExtractor:
     df = df.drop(columns=['type', 'scientific_name', 'common_name', 'filename', 'TAXON_ORDER', 'CATEGORY', 'SPECIES_CODE', 'ORDER1', 'FAMILY'])
     
     # Save the final preprocessed DataFrame
-    preprocessed_file_path = '/kaggle/working/extra_preprocessed_data.csv'
+    preprocessed_file_path = 'C:\Users\nivet\Documents\birdclef-2022\extra_preprocessed_data.csv'
     df.to_csv(preprocessed_file_path, index=False)
-    
-    # Display a sample of the DataFrame
-    print("Sample of the preprocessed DataFrame:")
-    print(df.head())
-    
-    print(f"\nPreprocessed data saved to {preprocessed_file_path}")
