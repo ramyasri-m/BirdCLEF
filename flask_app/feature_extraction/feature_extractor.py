@@ -12,152 +12,103 @@ from tqdm import tqdm
 import gc  # Garbage collector
 
 class FeatureExtractor:
-    
-    # Load the metadata and taxonomy files
-    metadata_path = 'C:/Users/nivet/Documents/birdclef-2022/train_metadata.csv'
-    taxonomy_path = 'C:/Users/nivet/Documents/birdclef-2022/eBird_Taxonomy_v2021.csv'
-    audio_base_path = 'C:/Users/nivet/Documents/birdclef-2022/train_audio'
-    
-    metadata_df = pd.read_csv(metadata_path)
-    taxonomy_df = pd.read_csv(taxonomy_path)
+    def __init__(self, metadata_path, taxonomy_path, audio_base_path, delta_width=3):
+        # Initialize paths
+        self.metadata_path = metadata_path
+        self.taxonomy_path = taxonomy_path
+        self.audio_base_path = audio_base_path
+        self.delta_width = delta_width
 
-    # Define noisy types to consider
-    noisy_terms = ['wing', 'wings', 'water', 'splash', 'rain', 'ground', 'background', 'noise', 'anthropogenic', 'traffic', 'street']
-    
-    # Filter the DataFrame to include only samples with rating >= 3
-    filtered_metadata_df = metadata_df[metadata_df['rating'] >= 3]
+        # Load metadata and taxonomy DataFrames
+        self.metadata_df = pd.read_csv(metadata_path)
+        self.taxonomy_df = pd.read_csv(taxonomy_path)
 
-    def analyze_column_individual_case_insensitive(df, column_name):
-        # Initialize a Counter to count each unique item across all entries
-        item_counter = Counter()
+        # Filter metadata for rating >= 3
+        self.filtered_metadata_df = self.metadata_df[self.metadata_df['rating'] >= 3]
+
+    def merge_and_process_taxonomy(self):
+        merged_df = pd.merge( self.filtered_metadata_df, self.taxonomy_df, left_on='scientific_name', right_on='SCI_NAME', how='left')
+        merged_df = merged_df.drop(columns=[ 'primary_label', 'PRIMARY_COM_NAME', 'secondary_labels', 'author', 'license', 'rating', 'REPORT_AS', 'SCI_NAME', 'time', 'url', 'SPECIES_GROUP'])
         
-        # Iterate over each entry in the column
-        for entry in df[column_name].dropna():
-            # Convert the string to a list, make each item lowercase, and remove spaces
-            items = [re.sub(r'\s+', '', item.lower()) for item in eval(entry)]  # Lowercase and remove spaces
-            # Update the counter with items in the list
-            item_counter.update(items)
-        return item_counter
+        label_encoder = LabelEncoder()
+        merged_df['Order'] = label_encoder.fit_transform(merged_df['ORDER1'])
+        merged_df['Family'] = label_encoder.fit_transform(merged_df['FAMILY'])
+        merged_df.to_csv("C:/Users/nivet/Documents/birdclef-2022/merged_data.csv", index=False)
         
-    # Analyze the 'type' column
-    type_counts = analyze_column_individual_case_insensitive(filtered_metadata_df, 'type')
-    
-    # Filter types that contain any of the noisy terms
-    noisy_types = [item for item in type_counts if any(term in item for term in noisy_terms)]
-    
-    # Function to filter DataFrame by removing rows where all 'type' values match noisy types
-    def filter_noisy_rows(df, noisy_types):
-        def has_only_noisy_types(type_list):
-            # Clean and normalize type_list
-            items = [re.sub(r'\s+', '', item.lower()) for item in eval(type_list)]
-            # Check if all items are in noisy_types
-            return all(item in noisy_types for item in items)
-        
-        # Filter the DataFrame
-        filtered_df = df[~df['type'].apply(has_only_noisy_types)]
-        
-        return filtered_df
-    
-    # Apply the filter to remove rows with only noisy types
-    filtered_metadata_df_cleaned = filter_noisy_rows(filtered_metadata_df, noisy_types)
-    
-    # Merge with taxonomy on scientific name
-    merged_df = pd.merge(filtered_metadata_df_cleaned, taxonomy_df, left_on='scientific_name', right_on='SCI_NAME', how='left')
-    
-    # Drop specified columns after merging
-    merged_df = merged_df.drop(columns=['primary_label', 'PRIMARY_COM_NAME', 'secondary_labels', 'author', 'license', 'rating', 'REPORT_AS', 'SCI_NAME', 'time', 'url', 'SPECIES_GROUP'])
-    
-    # Encode hierarchical taxonomy levels (e.g., Order, Family)
-    label_encoder = LabelEncoder()
-    #merged_df['Category'] = label_encoder.fit_transform(merged_df['CATEGORY'])
-    merged_df['Order'] = label_encoder.fit_transform(merged_df['ORDER1'])
-    merged_df['Family'] = label_encoder.fit_transform(merged_df['FAMILY'])
-    #merged_df['Species_code'] = label_encoder.fit_transform(merged_df['SPECIES_CODE'])
-    #merged_df['Pri_com_name'] = label_encoder.fit_transform(merged_df['PRIMARY_COM_NAME'])
-    #merged_df['Scientific_name'] = label_encoder.fit_transform(merged_df['SCI_NAME'])
-    
-    # Save the final DataFrame to a CSV file
-    merged_df.to_csv("C:/Users/nivet/Documents/birdclef-2022/merged_data.csv", index=False)
-    
-    # Define the base path for audio files
-    base_path = 'C:/Users/nivet/Documents/birdclef-2022/train_audio'
-    
-    delta_width = 3
-    # Bandpass filter function for typical birdsong frequencies (1-10 kHz)
-    def bandpass_filter(y, sr, lowcut=1000, highcut=10000):
+        return merged_df
+
+    def bandpass_filter(self, y, sr, lowcut=1000, highcut=10000):
         sos = signal.butter(10, [lowcut, highcut], btype='band', fs=sr, output='sos')
         filtered = signal.sosfilt(sos, y)
+        
         return filtered
-    
-    # Function to extract audio features
-    def extract_features(y, sr):
+
+    def extract_features(self, y, sr):
         features = {}
-        
         # Apply bandpass filter
-        y = bandpass_filter(y, sr)
-        
-        # MFCC - Mean and Standard Deviation across 13 coefficients
+        y = self.bandpass_filter(y, sr)
+
+        # MFCC
         mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, n_fft=1024)
         for i in range(13):
             features[f'mfcc_mean_{i+1}'] = np.mean(mfcc[i])
             features[f'mfcc_std_{i+1}'] = np.std(mfcc[i])
-    
-        # Chroma - Mean and Standard Deviation across 12 chroma features
+
+        # Chroma
         chroma = librosa.feature.chroma_stft(y=y, sr=sr, n_fft=1024)
         for i in range(12):
             features[f'chroma_mean_{i+1}'] = np.mean(chroma[i])
             features[f'chroma_std_{i+1}'] = np.std(chroma[i])
-        
-        # Spectral Contrast - Mean and Standard Deviation across bands
+
+        # Spectral Contrast
         spectral_contrast = librosa.feature.spectral_contrast(y=y, sr=sr, n_fft=1024)
         for i in range(spectral_contrast.shape[0]):
             features[f'spectral_contrast_mean_{i+1}'] = np.mean(spectral_contrast[i])
             features[f'spectral_contrast_std_{i+1}'] = np.std(spectral_contrast[i])
-    
-        # Spectral Centroid - Mean and Standard Deviation
+
+        # Spectral Centroid
         spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr, n_fft=1024)
         features['spectral_centroid_mean'] = np.mean(spectral_centroid)
         features['spectral_centroid_std'] = np.std(spectral_centroid)
-        
-        # Spectral Bandwidth - Mean and Standard Deviation
+
+        # Spectral Bandwidth
         spectral_bandwidth = librosa.feature.spectral_bandwidth(y=y, sr=sr, n_fft=1024)
         features['spectral_bandwidth_mean'] = np.mean(spectral_bandwidth)
         features['spectral_bandwidth_std'] = np.std(spectral_bandwidth)
-        
-        # Zero-Crossing Rate - Mean and Standard Deviation
+
+        # Zero-Crossing Rate
         zcr = librosa.feature.zero_crossing_rate(y, frame_length=1024)
         features['zcr_mean'] = np.mean(zcr)
         features['zcr_std'] = np.std(zcr)
-        
-        # Additional Features
-        # Delta MFCCs - Mean and Standard Deviation
-        if mfcc.shape[1] >= delta_width:  # Check if MFCC frames are enough for delta calculation
-            delta_mfcc = librosa.feature.delta(mfcc, width=delta_width)
+
+        # Delta MFCC
+        if mfcc.shape[1] >= self.delta_width:
+            delta_mfcc = librosa.feature.delta(mfcc, width=self.delta_width)
             for i in range(delta_mfcc.shape[0]):
                 features[f'delta_mfcc_mean_{i+1}'] = np.mean(delta_mfcc[i])
                 features[f'delta_mfcc_std_{i+1}'] = np.std(delta_mfcc[i])
         else:
-            print(f"Skipping delta calculation for audio with insufficient frames (width={delta_width})")
-        
-        # Spectral Rolloff - Mean and Standard Deviation
+            print(f"Skipping Delta MFCC calculation (insufficient frames: {self.delta_width})")
+
+        # Spectral Rolloff
         spectral_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr, n_fft=1024, roll_percent=0.85)
         features['spectral_rolloff_mean'] = np.mean(spectral_rolloff)
         features['spectral_rolloff_std'] = np.std(spectral_rolloff)
-        
-        # Spectral Flatness - Mean and Standard Deviation
+
+        # Spectral Flatness
         spectral_flatness = librosa.feature.spectral_flatness(y=y, n_fft=1024)
         features['spectral_flatness_mean'] = np.mean(spectral_flatness)
         features['spectral_flatness_std'] = np.std(spectral_flatness)
-        
-        # Root Mean Square (RMS) Energy - Mean and Standard Deviation
+
+        # RMS Energy
         rms = librosa.feature.rms(y=y)
         features['rms_mean'] = np.mean(rms)
         features['rms_std'] = np.std(rms)
         
         return features
-    
+
     # Function to process data in batches
-    def process_in_batches(df, batch_size=100):
+    def process_in_batches(self, df, batch_size=100):
         all_features = []
         num_batches = len(df) // batch_size + (1 if len(df) % batch_size != 0 else 0)
         
@@ -166,10 +117,10 @@ class FeatureExtractor:
             
             batch_features = []
             for filename in batch_df['filename']:
-                file_path = os.path.join(base_path, filename)
+                file_path = os.path.join(self.audio_base_path, filename)  # Using self.audio_base_path
                 
                 y, sr = librosa.load(file_path, sr=44100)  # Set sample rate to 44100 Hz
-                features = extract_features(y, sr)
+                features = self.extract_features(y, sr)  # Using self to call extract_features
                 batch_features.append(features)
             
             # Convert batch features to DataFrame
@@ -185,42 +136,62 @@ class FeatureExtractor:
         
         # Concatenate all batches to form the final DataFrame
         final_data = pd.concat(all_features, ignore_index=True)
+        
         return final_data
-    
-    # Apply batch processing to the DataFrame
-    extra_data = process_in_batches(merged_df, batch_size=100)
-    
-    # Save the final DataFrame to a CSV file
-    extra_data.to_csv("C:/Users/nivet/Documents/birdclef-2022/extra_data.csv", index=False)
-    
-    # Load the dataset
-    file_path = 'C:/Users/nivet/Documents/birdclef-2022/extra_data.csv'
-    df = pd.read_csv(file_path)
-    
-    # Convert latitude and longitude to radians
-    df['latitude_rad'] = np.radians(df['latitude'])
-    df['longitude_rad'] = np.radians(df['longitude'])
-    
-    # Transform to polar coordinates
-    df['x'] = np.cos(df['latitude_rad']) * np.cos(df['longitude_rad'])
-    df['y'] = np.cos(df['latitude_rad']) * np.sin(df['longitude_rad'])
-    df['z'] = np.sin(df['latitude_rad'])
-    
-    # Drop the original latitude and longitude columns
-    df = df.drop(columns=['latitude', 'longitude', 'latitude_rad', 'longitude_rad'])
-    
-    audio_feature_columns = [col for col in df.columns if col.startswith('mfcc') or 
-                       col.startswith('chroma') or col.startswith('spectral') or 
-                       col.startswith('zcr') or col.startswith('delta') or 
-                       col.startswith('rms')]
-    
-    # Normalize the audio feature columns to the range [0, 1]
-    audio_scaler = MinMaxScaler()
-    df[audio_feature_columns] = audio_scaler.fit_transform(df[audio_feature_columns])
-    
-    # Drop Unecessary columns
-    df = df.drop(columns=['type', 'scientific_name', 'common_name', 'filename', 'TAXON_ORDER', 'CATEGORY', 'SPECIES_CODE', 'ORDER1', 'FAMILY'])
-    
-    # Save the final preprocessed DataFrame
-    preprocessed_file_path = 'C:/Users/nivet/Documents/birdclef-2022/extra_preprocessed_data.csv'
-    df.to_csv(preprocessed_file_path, index=False)
+
+    def process_and_save_data(self, batch_size=100):
+        
+        # Apply batch processing to the DataFrame
+        extra_data = self.process_in_batches(self.filtered_metadata_df, batch_size=batch_size)
+
+        # Save the batch-processed DataFrame to CSV
+        extra_data_file_path = "C:/Users/nivet/Documents/birdclef-2022/extra_data.csv"
+        extra_data.to_csv(extra_data_file_path, index=False)
+        
+        # Load the saved dataset
+        df = pd.read_csv(extra_data_file_path)
+        
+        # Convert latitude and longitude to radians
+        df['latitude_rad'] = np.radians(df['latitude'])
+        df['longitude_rad'] = np.radians(df['longitude'])
+        
+        # Transform to polar coordinates
+        df['x'] = np.cos(df['latitude_rad']) * np.cos(df['longitude_rad'])
+        df['y'] = np.cos(df['latitude_rad']) * np.sin(df['longitude_rad'])
+        df['z'] = np.sin(df['latitude_rad'])
+        
+        # Drop the original latitude and longitude columns
+        df = df.drop(columns=['latitude', 'longitude', 'latitude_rad', 'longitude_rad'])
+        
+        # Select only the audio feature columns for normalization
+        audio_feature_columns = [col for col in df.columns if col.startswith('mfcc') or 
+                                 col.startswith('chroma') or col.startswith('spectral') or 
+                                 col.startswith('zcr') or col.startswith('delta') or 
+                                 col.startswith('rms')]
+        
+        # Normalize the audio feature columns to the range [0, 1]
+        audio_scaler = MinMaxScaler()
+        df[audio_feature_columns] = audio_scaler.fit_transform(df[audio_feature_columns])
+        
+        # Drop unnecessary columns
+        df = df.drop(columns=['type', 'scientific_name', 'common_name', 'filename', 'TAXON_ORDER', 'CATEGORY', 'SPECIES_CODE', 'ORDER1', 'FAMILY'])
+        
+        # Save the final preprocessed DataFrame to a CSV file
+        preprocessed_file_path = 'C:/Users/nivet/Documents/birdclef-2022/extra_preprocessed_data.csv'
+        df.to_csv(preprocessed_file_path, index=False)
+        
+        return df
+        
+# Define paths for the metadata, taxonomy, and audio base
+metadata_path = 'C:/Users/nivet/Documents/birdclef-2022/train_metadata.csv'
+taxonomy_path = 'C:/Users/nivet/Documents/birdclef-2022/eBird_Taxonomy_v2021.csv'
+audio_base_path = 'C:/Users/nivet/Documents/birdclef-2022/train_audio'
+
+# Create an instance of the FeatureExtractor class
+feature_extractor = FeatureExtractor(metadata_path, taxonomy_path, audio_base_path)
+
+# Call the method to process and save the data
+preprocessed_data = feature_extractor.process_and_save_data(batch_size=100)
+
+# Optionally, you can inspect the preprocessed data
+print(preprocessed_data.head())
