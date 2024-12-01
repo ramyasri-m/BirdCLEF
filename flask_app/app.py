@@ -7,7 +7,6 @@ import pickle
 
 from keras.models import load_model
 from werkzeug.utils import secure_filename
-from utils.utils import process_predictions
 from feature_extraction.feature_extractor import FeatureExtractor
 from flask import Flask, flash, request, redirect, url_for, send_from_directory, render_template
 
