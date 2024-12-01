@@ -20,6 +20,9 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Ensure the folder exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -61,15 +64,15 @@ def upload_file():
                 return redirect(request.url)
 
             # Save the file
-            filename = os.path.join(app.config['UPLOAD_FOLDER'],
-                                    secure_filename(file.filename))
-            file.save(filename)
-
+            if file:
+                filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
+                file.save(filename)
+                return "File saved successfully!"
+            else:
+                return "No file uploaded."   
+            
             # Redirect to results page with file and location info
-            return redirect(url_for('classify_and_show_results',
-                                    filename=filename,
-                                    latitude=latitude,
-                                    longitude=longitude))
+            return redirect(url_for('classify_and_show_results', filename=filename, latitude=latitude, longitude=longitude))
     return render_template("index.html")
 
 # Classify and show results
@@ -86,20 +89,13 @@ def classify_and_show_results():
     model = joblib.load('models/XGBoost_Order.joblib')
     predictions = model.predict(features)[0]
     # Process predictions and render results
-    predictions_probability, prediction_classes = process_predictions(predictions,
-                                                                       'config_files/classes.json')
+    predictions_probability, prediction_classes = process_predictions(predictions, 'config_files/classes.json')
 
-    predictions_to_render = {prediction_classes[i]: "{}%".format(
-                                round(predictions_probability[i]*100, 3)) for i in range(3)}
+    predictions_to_render = {prediction_classes[i]: "{}%".format(round(predictions_probability[i]*100, 3)) for i in range(3)}
     # Delete uploaded file
     os.remove(filename)
     # Render results
-    return render_template("results.html",
-                           filename=filename,
-                           latitude=latitude,
-                           longitude=longitude,
-                           predictions_to_render=predictions_to_render)
-
+    return render_template("results.html", filename=filename, latitude=latitude, longitude=longitude, predictions_to_render=predictions_to_render)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
