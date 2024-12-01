@@ -2,6 +2,7 @@ import os
 import sys
 import numpy as np
 import joblib
+import pickle
 
 
 from keras.models import load_model
@@ -96,7 +97,10 @@ def classify_and_show_results():
 
     features = np.expand_dims(features, 0)
     # Load model and perform inference
-    model = joblib.load('models/XGBoost_Order.joblib')
+    model_path = 'models/XGBoost_Order.pkl'  # Path to your .pkl file
+    with open(model_path, 'rb') as file:
+        model = pickle.load(file) # Load the .pkl model
+    # model = joblib.load('models/XGBoost_Order.joblib')
     predictions = model.predict(features)[0]
     # Process predictions and render results
     predictions_probability, prediction_classes = process_predictions(predictions, 'config_files/classes.json')
