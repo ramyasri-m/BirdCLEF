@@ -1,14 +1,30 @@
-<html>
-<link rel= "stylesheet" type= "text/css" href= "{{url_for('styles',filename='index.css')}}">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" type="text/css" href="{{url_for('styles',filename='index.css')}}">
   <title>Audio Classification</title>
-    <div class="center-screen">
-      <div class="title">
-        <h1>Audio Classification</h1>
-      </div>
-        <h2> Upload new audio file</h2>
-          <form method=post enctype=multipart/form-data>
-            <input type=file name=file>
-            <input type=submit value=Classify>
-          </form>
+</head>
+<body>
+  <div class="center-screen">
+    <div class="title">
+      <h1>Audio Classification</h1>
     </div>
+    <h2>Upload new audio file</h2>
+    <form method="post" enctype="multipart/form-data">
+      <!-- Input for audio file -->
+      <input type="file" name="file">
+      <br><br>
+      <!-- Input for latitude -->
+      <label for="latitude">Latitude:</label>
+      <input type="text" id="latitude" name="latitude" placeholder="Enter latitude">
+      <br><br>
+      <!-- Input for longitude -->
+      <label for="longitude">Longitude:</label>
+      <input type="text" id="longitude" name="longitude" placeholder="Enter longitude">
+      <br><br>
+      <!-- Submit button -->
+      <input type="submit" value="Classify">
+    </form>
+  </div>
+</body>
 </html>
