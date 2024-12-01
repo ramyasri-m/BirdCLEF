@@ -100,25 +100,33 @@ def classify_and_show_results():
     model_path = 'models/XGBoost_Order.pkl'  
     with open(model_path, 'rb') as file:
         model = pickle.load(file)
-    
+
+    # Perform inference and get class probabilities
     predictions = model.predict(features)[0]
-    # Process predictions and render results
-    predictions_probability, prediction_classes = process_predictions(predictions, 'config_files/classes.json')
+    predictions_probability = model.predict_proba(features)[0]
+    
+    # Load class labels from JSON
+    with open('config_files/classes.json', 'r') as file:
+        class_dictionary = json.load(file)
+        # Sort classes by keys
+        prediction_classes = np.array([class_dictionary[key] for key in sorted(class_dictionary.keys())])
     
     # Dynamically determine the number of available predictions
     num_predictions = min(len(predictions_probability), 3)
-
+    
     # Process only the available predictions
+    top_predictions_indices = np.argsort(predictions_probability)[::-1]  # Sort probabilities in descending order
     predictions_to_render = {
-        prediction_classes[i]: "{}%".format(round(predictions_probability[i] * 100, 3))
+        prediction_classes[top_predictions_indices[i]]: "{}%".format(round(predictions_probability[top_predictions_indices[i]] * 100, 3))
         for i in range(num_predictions)
     }
-
+    
     # Delete uploaded file
     os.remove(filename)
-        
+    
     # Render results
     return render_template("results.html", filename=filename, latitude=latitude, longitude=longitude, predictions_to_render=predictions_to_render)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
