@@ -89,23 +89,24 @@ def classify_and_show_results():
     try:
         # Compute audio signal features
         features = process_sample(filename, latitude, longitude)
-        features = np.expand_dims(features, 0)
-        # Load model and perform inference
-        model = joblib.load('models/XGBoost_Order.joblib')
-        predictions = model.predict(features)[0]
-        # Process predictions and render results
-        predictions_probability, prediction_classes = process_predictions(predictions, 'config_files/classes.json')
-    
-        predictions_to_render = {prediction_classes[i]: "{}%".format(round(predictions_probability[i]*100, 3)) for i in range(3)}
-        # Delete uploaded file
-        os.remove(filename)
-        
-        # Render results
-        return render_template("results.html", filename=filename, latitude=latitude, longitude=longitude, predictions_to_render=predictions_to_render)
     
     except Exception as e:
         app.logger.error(f"Error processing sample: {e}")
         return "Error processing sample.", 500
+
+    features = np.expand_dims(features, 0)
+    # Load model and perform inference
+    model = joblib.load('models/XGBoost_Order.joblib')
+    predictions = model.predict(features)[0]
+    # Process predictions and render results
+    predictions_probability, prediction_classes = process_predictions(predictions, 'config_files/classes.json')
+    
+    predictions_to_render = {prediction_classes[i]: "{}%".format(round(predictions_probability[i]*100, 3)) for i in range(3)}
+    # Delete uploaded file
+    os.remove(filename)
+        
+    # Render results
+    return render_template("results.html", filename=filename, latitude=latitude, longitude=longitude, predictions_to_render=predictions_to_render)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
