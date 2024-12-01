@@ -97,10 +97,16 @@ class FeatureExtractor:
         else:
             normalized_features = np.zeros_like(feature_values)  # Avoid divide-by-zero if all values are the same
 
-        # Convert latitude and longitude to radians
-        latitude_rad = np.radians(latitude)
-        longitude_rad = np.radians(longitude)
-
+        try:
+            latitude = float(latitude)  # Ensure numerical input
+            longitude = float(longitude)  # Ensure numerical input
+            # Convert latitude and longitude to radians
+            latitude_rad = np.radians(latitude)
+            longitude_rad = np.radians(longitude)
+            # Continue processing with converted values
+        except ValueError:
+            raise ValueError("Latitude and longitude must be valid numbers.")
+    
         # Transform to polar coordinates
         x = np.cos(latitude_rad) * np.cos(longitude_rad)
         y = np.cos(latitude_rad) * np.sin(longitude_rad)
@@ -109,4 +115,5 @@ class FeatureExtractor:
         # Combine normalized audio features and polar coordinates
         final_features = np.concatenate([normalized_features, [x, y, z]])
 
+        # Return the processed features or result
         return final_features
