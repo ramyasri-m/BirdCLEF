@@ -10,10 +10,8 @@ from utils.utils import process_predictions
 from feature_extraction.feature_extractor import FeatureExtractor
 from flask import Flask, flash, request, redirect, url_for, send_from_directory, render_template
 
-
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'ogg'}
-
 
 # Create Flask App
 app = Flask(__name__)
@@ -28,9 +26,9 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def extract_features(filepath):
+def process_sample(filepath, latitude, longitude):
     feature_extractor = FeatureExtractor()
-    return feature_extractor.extract_features(filepath)
+    return feature_extractor.process_sample(filepath, latitude, longitude)
 
 
 # Upload files function
@@ -47,38 +45,62 @@ def upload_file():
             flash('No selected file')
             return redirect(request.url)
         if file and allowed_file(file.filename):
-            filename = os.path.join(app.config['UPLOAD_FOLDER'],
-                secure_filename(file.filename))
-            file.save(filename)
-            return redirect(url_for('classify_and_show_results',
-                filename=filename))
-    return render_template("index.html")
+            # Get latitude and longitude from the form
+            latitude = request.form.get('latitude')
+            longitude = request.form.get('longitude')
 
+            if not latitude or not longitude:
+                flash('Latitude and longitude must be provided.')
+                return redirect(request.url)
+
+            try:
+                latitude = float(latitude)
+                longitude = float(longitude)
+            except ValueError:
+                flash('Latitude and longitude must be valid numbers.')
+                return redirect(request.url)
+
+            # Save the file
+            filename = os.path.join(app.config['UPLOAD_FOLDER'],
+                                    secure_filename(file.filename))
+            file.save(filename)
+
+            # Redirect to results page with file and location info
+            return redirect(url_for('classify_and_show_results',
+                                    filename=filename,
+                                    latitude=latitude,
+                                    longitude=longitude))
+    return render_template("index.html")
 
 # Classify and show results
 @app.route('/results', methods=['GET'])
 def classify_and_show_results():
-    filename = request.args['filename']
+    filename = request.args.get('filename')
+    latitude = request.args.get('latitude')
+    longitude = request.args.get('longitude')
+
     # Compute audio signal features
-    features = extract_features(filename)
+    features = process_sample(filename, latitude, longitude)
     features = np.expand_dims(features, 0)
     # Load model and perform inference
-    # model = load_model('models/model_1.hdf5')
     model = joblib.load('models/XGBoost_Order.joblib')
     predictions = model.predict(features)[0]
     # Process predictions and render results
     predictions_probability, prediction_classes = process_predictions(predictions,
-                                                                    'config_files/classes.json')
+                                                                       'config_files/classes.json')
 
-    predictions_to_render = {prediction_classes[i]:"{}%".format(
+    predictions_to_render = {prediction_classes[i]: "{}%".format(
                                 round(predictions_probability[i]*100, 3)) for i in range(3)}
     # Delete uploaded file
     os.remove(filename)
     # Render results
     return render_template("results.html",
-        filename=filename,
-        predictions_to_render=predictions_to_render)
+                           filename=filename,
+                           latitude=latitude,
+                           longitude=longitude,
+                           predictions_to_render=predictions_to_render)
 
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
