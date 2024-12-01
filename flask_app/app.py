@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+import joblib
 
 
 from keras.models import load_model
@@ -62,7 +63,8 @@ def classify_and_show_results():
     features = extract_features(filename)
     features = np.expand_dims(features, 0)
     # Load model and perform inference
-    model = load_model('models/model_1.hdf5')
+    # model = load_model('models/model_1.hdf5')
+    model = joblib.load('models/XGBoost_Order.joblib')
     predictions = model.predict(features)[0]
     # Process predictions and render results
     predictions_probability, prediction_classes = process_predictions(predictions,
