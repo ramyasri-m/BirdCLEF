@@ -67,12 +67,10 @@ def upload_file():
             if file:
                 filename = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(file.filename))
                 file.save(filename)
-                return "File saved successfully!"
+                # Redirect to results page with file and location info
+                return redirect(url_for('classify_and_show_results', filename=filename, latitude=latitude, longitude=longitude))
             else:
                 return "No file uploaded."   
-            
-            # Redirect to results page with file and location info
-            return redirect(url_for('classify_and_show_results', filename=filename, latitude=latitude, longitude=longitude))
     return render_template("index.html")
 
 # Classify and show results
