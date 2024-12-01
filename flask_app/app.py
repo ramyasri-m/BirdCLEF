@@ -1,7 +1,6 @@
 import os
 import sys
 import numpy as np
-import joblib
 import pickle
 
 
@@ -96,16 +95,25 @@ def classify_and_show_results():
         return "Error processing sample.", 500
 
     features = np.expand_dims(features, 0)
+    
     # Load model and perform inference
-    model_path = 'models/XGBoost_Order.pkl'  # Path to your .pkl file
+    model_path = 'models/XGBoost_Order.pkl'  
     with open(model_path, 'rb') as file:
-        model = pickle.load(file) # Load the .pkl model
-    # model = joblib.load('models/XGBoost_Order.joblib')
+        model = pickle.load(file)
+    
     predictions = model.predict(features)[0]
     # Process predictions and render results
     predictions_probability, prediction_classes = process_predictions(predictions, 'config_files/classes.json')
     
-    predictions_to_render = {prediction_classes[i]: "{}%".format(round(predictions_probability[i]*100, 3)) for i in range(3)}
+    # Dynamically determine the number of available predictions
+    num_predictions = min(len(predictions_probability), 3)
+
+    # Process only the available predictions
+    predictions_to_render = {
+        prediction_classes[i]: "{}%".format(round(predictions_probability[i] * 100, 3))
+        for i in range(num_predictions)
+    }
+
     # Delete uploaded file
     os.remove(filename)
         
