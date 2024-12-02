@@ -5,12 +5,12 @@
 ```
 git clone git@github.com:jsalbert/sound_classification_ml_production.git
 ```
-2. Create a virtual environment using [virtualenv](https://virtualenv.pypa.io/en/latest/) and install library requirements:
+2. Create a virtual environment using [virtualenv](https://virtualenv.pypa.io/en/latest/) and install library requirements for Windows:
 
 ```
 pip install virtualenv
 virtualenv myenv
-source myenv/Scripts/activate #For Windows
+source myenv/Scripts/activate 
 pip install -r requirements.txt
 ```
 
