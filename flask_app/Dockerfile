@@ -16,5 +16,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Tell the port number the container should expose
 EXPOSE 5000
 
-# Run the command
-CMD ["python", "./app.py"]
+# Run the Gunicorn command to start the app in production
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app"]
