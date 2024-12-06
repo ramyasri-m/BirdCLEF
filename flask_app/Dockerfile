@@ -1,4 +1,4 @@
-FROM python:3.10.14
+FROM python:3.10.14-slim
 
 # Set a directory for the app
 WORKDIR /usr/src/flask_app
@@ -7,10 +7,11 @@ WORKDIR /usr/src/flask_app
 COPY . .
 
 # Install dependencies
-RUN apt-get update
-RUN apt-get install -y libsndfile1 ffmpeg
-RUN pip install --upgrade pip
-RUN ["pip", "install", "-e", "."]
+RUN apt-get update && \
+    apt-get install -y libsndfile1 && \
+    apt-get clean
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Tell the port number the container should expose
