@@ -1,5 +1,7 @@
 # BirdCLEF
 
+## Deployment Steps for Audio Application on Local Environment
+
 1. Clone this repository:
 
 ```
