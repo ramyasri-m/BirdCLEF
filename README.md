@@ -23,3 +23,7 @@ python app.py
 4. Access it via [localhost:5000](http://localhost:5000/)
 
 You should be able to see this screen, upload and classify a sound:
+
+<p align="center">
+<img src="https://github.com/ramyasri-m/BirdCLEF/blob/main/images/Frontend.png?raw=true" alt="Frontend" width="500"/>
+</p>
