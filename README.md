@@ -5,7 +5,7 @@
 1. Clone this repository:
 
 ```
-git clone git@github.com:jsalbert/sound_classification_ml_production.git
+git clone git@github.com:ramyasri-m/BirdCLEF.git
 ```
 2. Create a virtual environment using [virtualenv](https://virtualenv.pypa.io/en/latest/) and install library requirements for Windows:
 
